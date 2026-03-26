@@ -1,74 +1,56 @@
-# Implementasi API Get Current User
+# Implementation Plan: API Logout
 
-## Deskripsi Tugas
-Halaman ini berisi instruksi untuk mengimplementasikan API endpoint yang berfungsi mengambil data user yang saat ini sedang login.
+## 1. Deskripsi Tugas
+Buatkan endpoint API untuk proses Logout user menggunakan ElysiaJS. Endpoint ini akan merespon proses logout dari user yang sedang aktif.
 
-## Spesifikasi API
-- **Method**: `GET`
-- **Endpoint**: `/api/users/me`
+## 2. Spesifikasi Endpoint
+- **Method:** `GET`
+- **Endpoint:** `/api/logout`
 
-### Response Berhasil (200 OK)
+### Response Berhasil (Success Status 200)
 ```json
 {
-    "message": "User fetched successfully",
-    "data": {
-        "id": 1,
-        "name": "John Doe",
-        "email": "[EMAIL_ADDRESS]",
-        "created_at": "2022-01-01T00:00:00.000Z"
-    }
+    "message": "User logged out successfully"
 }
 ```
 
-### Response Gagal (401 Unauthorized)
+### Response Gagal (Error Status 401)
+Jika request dilakukan tanpa menyertakan token autentikasi:
 ```json
 {
     "message": "Unauthorized: No token provided"
 }
 ```
 
-## Aturan Struktur Direktori dan File
-Kode harus ditulis dengan mengikuti struktur folder di dalam `src`:
-- **Routes** (`src/routes`): Berisi file routing Elysia.js. Penamaan file harus menggunakan format kebab-case, misal: `users-route.ts`.
-- **Services** (`src/services`): Berisi file logic bisnis aplikasi. Penamaan file harus menggunakan format kebab-case, misal: `users-service.ts`.
+## 3. Struktur Direktori dan File
+Implementasi harus mengikuti struktur arsitektur berikut di dalam folder `src/`:
+- **`src/services/users-service.ts`**: Berisi *business logic* untuk operasi users, termasuk operasi logout.
+- **`src/routes/users-route.ts`**: Berisi definisi *routing* ElysiaJS yang menghubungkan endpoint HTTP dengan fungsi dari *service*.
 
 ---
 
-## Tahapan Implementasi
+## 4. Tahapan Implementasi (Step-by-Step)
 
-Berikut adalah langkah-langkah detail yang perlu dilakukan untuk mengimplementasikan fitur ini:
+Untuk mengimplementasikan fitur ini, ikuti langkah-langkah berikut secara berurutan:
 
-### 1. Buat Service untuk Mengambil Data User (`src/services/users-service.ts`)
-1. Buat file baru dengan nama `users-service.ts` di dalam folder `src/services/` (jika belum ada).
-2. Buat sebuah function (misalnya `getCurrentUser`) yang menerima parameter identifier dari user (seperti argumen `userId` yang didapat dari token/session).
-3. Di dalam function tersebut, lakukan `query` ke database untuk mengambil detail data user berdasarkan `userId` tersebut.
-4. Jika data user ditemukan, kembalikan (*return*) object berisi data user (`id`, `name`, `email`, `created_at`).
-5. Lakukan *export* function `getCurrentUser` tersebut agar dapat digunakan di modul HTTP/route.
+### Langkah 1: Implementasi Logika Bisnis di Service
+1. Buka file `src/services/users-service.ts`.
+2. Buat sebuah fungsi asynchronous baru (contoh: `logoutUser`).
+3. Fungsi ini harus menerima argumen berupa `token` (string) atau objek *request context*.
+4. **Validasi:** Di dalam fungsi tersebut, cek apakah `token` tersedia. Jika tidak ada / kosong, lemparkan error yang memilki indikasi "Unauthorized" (misalnya `throw new Error("Unauthorized: No token provided")` atau menggunakan custom error class jika ada).
+5. **Proses Logout:** Lakukan proses invalidate token jika menggunakan database. Jika menggunakan JWT stateless atau cookie, bagian ini bisa difokuskan pada pengembalian pesan sukses yang akan disambungkan dengan penghapusan cookie di level route.
+6. **Return:** Kembalikan pesan string atau objek sesuai spesifikasi sukses: `User logged out successfully`.
 
-### 2. Buat Route Endpoint (`src/routes/users-route.ts`)
-1. Buat file baru dengan nama `users-route.ts` di dalam folder `src/routes/` (jika belum ada).
-2. Lakukan import module `Elysia` dan import service `getCurrentUser` yang baru saja dibuat.
-3. Buat sebuah instance/group route baru dengan prefix `/api/users`.
-4. Buat handler untuk HTTP method `.get('/me', ...)`.
-5. **Terapkan Middleware Otentikasi**:
-   - Pastikan endpoint terlindungi oleh autentikasi. Ambil header `Authorization` / Cookie JWT dari request klien.
-   - Apabila tidak valid atau tidak ada token otentikasi, kembalikan langsung response HTTP dengan status `401 Unauthorized` dengan isi response body:
-     ```json
-     {
-         "message": "Unauthorized: No token provided"
-     }
-     ```
-6. **Eksekusi dan Return Data**:
-   - Apabila otentikasi berhasil, ambil id user dari payload token yang sudah terverifikasi.
-   - Panggil service `getCurrentUser(userId)` menggunakan ID tersebut untuk mengambil data lengkap dari database.
-   - Susun dan kembalikan response berhasil dengan bentuk JSON object sesuai spesifikasi ("message" dan "data").
+### Langkah 2: Implementasi Endpoint HTTP di Route
+1. Buka file `src/routes/users-route.ts`.
+2. Tambahkan definisi route baru: `.get('/logout', async (context) => { ... })` ke dalam instance Elysia routing user. (Perhatikan prefix routing, jika file ini sudah di-prefix `/api/users`, sesuaikan path agar URL jadinya adalah `/api/logout` atau `/api/users/logout` sesuai konvensi project).
+3. Di dalam handler route, ambil token dari header `Authorization` (Bearer token) atau dari `cookie` melalui argumen `context`.
+4. Bungkus pemanggilan *service* dengan `try-catch` blok:
+   - **Try:** Panggil fungsi `usersService.logoutUser(token)` dan simpan hasilnya. Set response HTTP status menjadi `200` dan kembalikan response *success* JSON.
+   - **Catch:** Tangkap pesan error dari *service*. Jika error tersebut adalah error Unauthorized, set response HTTP status ke `401` dan kembalikan *response error body*: `{"message": "Unauthorized: No token provided"}`.
 
-### 3. Daftarkan Route pada Entry Point Utama (Contoh: `src/index.ts`)
-1. Buka file entry point utama dari aplikasi ElysiaJS (biasanya terletak di `src/index.ts` atau file setup utama).
-2. Import module hasil file route yang kita buat (`import userRoutes from './routes/users-route'`).
-3. Daftarkan route tersebut ke instance utama Elysia menggunakan method `.use(userRoutes)`.
-
-### 4. Pengujian (Testing)
-Lakukan testing manual pada endpoint tersebut (bisa dengan cURL, Postman, ataupun unit testing otomatis):
-1. **Skenario Gagal**: Lakukan request `GET /api/users/me` tanpa token atau token invalid. Pastikan server menolak request dengan status Code `401 Unauthorized` beserta message *"Unauthorized: No token provided"*.
-2. **Skenario Berhasil**: Lakukan request `GET /api/users/me` dengan mengirim token otentikasi valid pada HTTP Header. Pastikan server merespons dengan status code `200 OK` dan body object yang sesuai format lengkap (berisi *id, name, email, created_at*).
+### Langkah 3: Verifikasi dan Testing
+1. Pastikan server berjalan tidak menghasilkan *error compiler* TypeScript.
+2. Tes endpoint yang sudah dibuat menggunakan HTTP client sepert *cURL*, *Postman*, REST Client, atau *Hoppscotch*.
+3. **Skenario Negatif:** Panggil endpoint `GET /api/logout` **tanpa** mengirimkan header token. Pastikan balasan adalah status 401 dan body persis seperti spesifikasi Error.
+4. **Skenario Positif:** Panggil endpoint `GET /api/logout` **dengan** mengirimkan header token. Pastikan balasan adalah status 200 dan body persis seperti spesifikasi Success.

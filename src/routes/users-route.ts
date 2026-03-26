@@ -66,4 +66,18 @@ export const usersRoute = new Elysia({ prefix: "/api" })
         message: "Users fetched successfully",
         data: users,
       };
+  })
+  .get("/logout", async ({ headers: { authorization }, set }) => {
+    try {
+      const token = authorization?.split(' ')[1];
+      if (!token) {
+        set.status = 401;
+        return { message: "Unauthorized: No token provided" };
+      }
+      const message = await usersService.logoutUser(token);
+      return { message };
+    } catch (error: any) {
+      set.status = 401;
+      return { message: error.message };
+    }
   });

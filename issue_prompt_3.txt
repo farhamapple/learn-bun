@@ -1,0 +1,33 @@
+Buatkan Issue.md yang berisi perencanaan untuk nanti di implementasikan oleh junior programmer atau AI model yang lebih murah
+
+Isi dari Perencanaannyan adalah sebagai berikuit
+
+Buatkan API untuk get User saat ini yang sedang Login
+
+Endpoint : GET /api/users/me
+Response : {
+    "message": "User fetched successfully",
+    "data": {
+        "id": 1,
+        "name": "John Doe",
+        "email": "[EMAIL_ADDRESS]",
+        "created_at": "2022-01-01T00:00:00.000Z"
+    }
+}
+
+Response Body ( Error ) : 
+{
+    "message": "Unauthorized: No token provided"
+}
+
+
+Struktur Folder di dalam src
+- routes: ini berisi routing elysia js
+- services : ini berisi logic bisnis aplikasi
+
+Struktur file 
+- routes: menggunakan format misal users-route.ts
+- services : menggunakan format misal users-service.ts
+
+
+Jelaskan tahapan-tahapan yang di perlukan untuk mengimplementasikan ini, anggap nanti yang mengimpelemntasikan adalah junior programmer atau model AI yang lebih murah

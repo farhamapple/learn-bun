@@ -80,4 +80,12 @@ export const usersService = {
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   },
+
+  async logoutUser(token: string) {
+    if (!token) {
+      throw new Error("Unauthorized: No token provided");
+    }
+    await db.delete(sessions).where(eq(sessions.token, token));
+    return "User logged out successfully";
+  },
 };
