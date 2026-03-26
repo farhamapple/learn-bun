@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { usersService } from "../services/users-service";
+import { UnauthorizedError } from "../errors";
 
 export const usersRoute = new Elysia({ prefix: "/api" })
   .post("/register", async ({ body, set }) => {
@@ -66,4 +67,22 @@ export const usersRoute = new Elysia({ prefix: "/api" })
         message: "Users fetched successfully",
         data: users,
       };
+  })
+  .get("/logout", async ({ headers: { authorization }, set }) => {
+    try {
+      const token = authorization?.split(' ')[1];
+      if (!token) {
+        set.status = 401;
+        return { message: "Unauthorized: No token provided" };
+      }
+      const message = await usersService.logoutUser(token);
+      return { message };
+    } catch (error: any) {
+      if (error instanceof UnauthorizedError) {
+        set.status = 401;
+      } else {
+        set.status = 500;
+      }
+      return { message: error.message };
+    }
   });

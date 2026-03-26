@@ -3,6 +3,7 @@ import { users, sessions } from "../db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { randomUUID } from "node:crypto";
+import { UnauthorizedError } from "../errors";
 
 export const usersService = {
   async registerUser({ name, email, password }: any) {
@@ -79,5 +80,13 @@ export const usersService = {
     }
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
+  },
+
+  async logoutUser(token: string) {
+    if (!token) {
+      throw new UnauthorizedError("Unauthorized: No token provided");
+    }
+    await db.delete(sessions).where(eq(sessions.token, token));
+    return "User logged out successfully";
   },
 };

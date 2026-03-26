@@ -1,0 +1,28 @@
+Buatkan Issue.md yang berisi perencanaan untuk nanti di implementasikan oleh junior programmer atau AI model yang lebih murah
+
+Isi dari Perencanaannyan adalah sebagai berikuit
+
+Buatkan API untuk Logout
+
+Endpoint : GET /api/logout
+Response : 
+{
+    "message": "User logged out successfully"
+}
+
+Response Body ( Error ) : 
+{
+    "message": "Unauthorized: No token provided"
+}
+
+
+Struktur Folder di dalam src
+- routes: ini berisi routing elysia js
+- services : ini berisi logic bisnis aplikasi
+
+Struktur file 
+- routes: menggunakan format misal users-route.ts
+- services : menggunakan format misal users-service.ts
+
+
+Jelaskan tahapan-tahapan yang di perlukan untuk mengimplementasikan ini, anggap nanti yang mengimpelemntasikan adalah junior programmer atau model AI yang lebih murah
