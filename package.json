@@ -1,0 +1,23 @@
+{
+  "name": "learn-bun",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "^1.3.11",
+    "drizzle-kit": "^0.31.10"
+  },
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.1",
+    "elysia": "^1.4.28",
+    "mysql2": "^3.20.0"
+  }
+}
