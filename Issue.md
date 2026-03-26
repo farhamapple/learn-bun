@@ -1,90 +1,74 @@
-# Implementasi Autentikasi Menggunakan Session (Migrasi dari JWT)
+# Implementasi API Get Current User
 
-Dokumen ini berisi spesifikasi dan tahapan implementasi untuk mentransisikan mekanisme autentikasi pada API yang sudah ada, dari menggunakan **JWT** menjadi menggunakan **Session berbasis Database**. Perencanaan ini dirancang agar mudah diikuti secara runtut oleh _junior programmer_ atau *model AI*.
+## Deskripsi Tugas
+Halaman ini berisi instruksi untuk mengimplementasikan API endpoint yang berfungsi mengambil data user yang saat ini sedang login.
 
-## 1. Spesifikasi Database Tambahan
+## Spesifikasi API
+- **Method**: `GET`
+- **Endpoint**: `/api/users/me`
 
-Buat tabel `sessions` untuk menyimpan data sesi login pengguna (sebagai pengganti Token JWT mandiri) dengan skema berikut:
+### Response Berhasil (200 OK)
+```json
+{
+    "message": "User fetched successfully",
+    "data": {
+        "id": 1,
+        "name": "John Doe",
+        "email": "[EMAIL_ADDRESS]",
+        "created_at": "2022-01-01T00:00:00.000Z"
+    }
+}
+```
 
-| Nama Kolom | Tipe Data | Keterangan |
-| :--- | :--- | :--- |
-| `id` | `integer` | Primary Key, Auto Increment |
-| `user_id` | `integer` | Not Null (Sebaiknya diset sebagai *Foreign Key* ke tabel `users`) |
-| `token` | `varchar(255)` | Not Null, Unique (Token sesi yang digenerate acak) |
-| `created_at` | `timestamp` | Default: `CURRENT_TIMESTAMP` |
+### Response Gagal (401 Unauthorized)
+```json
+{
+    "message": "Unauthorized: No token provided"
+}
+```
 
----
-
-## 2. Spesifikasi Perubahan API
-
-Mekanisme Autentikasi yang pada awalnya menggunakan JWT akan sepenuhnya digantikan dengan pengecekan baris record dari tabel `sessions`. Berikut adalah rincian interaksi pada API yang sudah ada:
-
-### A. Registrasi User Baru (`POST /api/register`)
-- **Perubahan:** Tidak ada perubahan pada bagian registrasi user. Pengguna tetap didaftarkan dan password tetap di-*hash* menggunakan bcrypt.
-
-### B. Login User (`POST /api/login`)
-- **Perubahan Logic:** 
-  1. Setelah pengecekan email dan pencocokan password berhasil, sistem **tidak lagi men-generate JWT**.
-  2. Sistem diwajibkan melakukan *generate random string* yang aman (misalnya fungsi hash, `crypto.randomUUID()`, atau string acak base64 sepanjang minimal 32-karakter). String ini akan menjadi **Session Token**.
-  3. Lakukan **INSERT** ke dalam tabel `sessions` untuk menyimpan kombinasi `user_id` dari user yang berhasil login dengan `token` sesi yang baru dibuat.
-- **Response:**
-  Mengembalikan session token pada JSON response.
-  ```json
-  {
-      "message": "User logged in successfully",
-      "data": {
-          "id": 1,
-          "name": "John Doe",
-          "email": "[EMAIL_ADDRESS]",
-          "created_at": "...",
-          "token": "4f92d8a5e1b3c7... (Session Token Acak)" 
-      }
-  }
-  ```
-
-### C. Mendapatkan Semua User (`GET /api/users`)
-- **Perubahan Verifikasi Otentikasi:**
-  1. *Middlewares/Hooks* tidak lagi melakukan *decoding* JWT.
-  2. Sistem akan membaca token sesi dari header `Authorization: Bearer <SESSION_TOKEN>`. 
-  3. Lakukan validasi **query ke database** (tabel `sessions`) untuk mencari apakah parameter `<SESSION_TOKEN>` tersebut terdaftar.
-  4. Jika baris token ditemukan pada tabel `sessions`, artinya user tersebut aktif/valid, dan request diizinkan untuk melihat tabel users.
-  5. Jika record session tidak ditemukan di database, status request wajib ditolak dengan mengembalikan `401 Unauthorized`.
+## Aturan Struktur Direktori dan File
+Kode harus ditulis dengan mengikuti struktur folder di dalam `src`:
+- **Routes** (`src/routes`): Berisi file routing Elysia.js. Penamaan file harus menggunakan format kebab-case, misal: `users-route.ts`.
+- **Services** (`src/services`): Berisi file logic bisnis aplikasi. Penamaan file harus menggunakan format kebab-case, misal: `users-service.ts`.
 
 ---
 
-## 3. Tahapan Implementasi
+## Tahapan Implementasi
 
-Berikut langkah-langkah praktikal yang harus dilakukan untuk menerapkan perubahan di atas:
+Berikut adalah langkah-langkah detail yang perlu dilakukan untuk mengimplementasikan fitur ini:
 
-### Tahap 1: Pembaruan Skema Database (Tabel `sessions`)
-1. Buka file definisi skema database (contoh: `src/db/schema.ts`).
-2. Tambahkan variabel skema baru untuk tabel `sessions` dengan field `id`, `user_id`, `token`, dan `created_at` sesuai dengan tabel yang ada di spesifikasi nomor 1.
-3. Jalankan *command push* dari *ORM* (contoh: `drizzle-kit push`) untuk mensinkronisasi dan membuat tabel baru tersebut ke dalam database.
+### 1. Buat Service untuk Mengambil Data User (`src/services/users-service.ts`)
+1. Buat file baru dengan nama `users-service.ts` di dalam folder `src/services/` (jika belum ada).
+2. Buat sebuah function (misalnya `getCurrentUser`) yang menerima parameter identifier dari user (seperti argumen `userId` yang didapat dari token/session).
+3. Di dalam function tersebut, lakukan `query` ke database untuk mengambil detail data user berdasarkan `userId` tersebut.
+4. Jika data user ditemukan, kembalikan (*return*) object berisi data user (`id`, `name`, `email`, `created_at`).
+5. Lakukan *export* function `getCurrentUser` tersebut agar dapat digunakan di modul HTTP/route.
 
-### Tahap 2: Perubahan *Services Logic* (`src/services/users-service.ts`)
-Fokus perubahan di sini berada pada logic Login.
-1. **Refaktor Fungsi Login (`loginUser`):**
-   - Hapus instansi atau import _plugin_ JWT (jika sebelumnya dilakukan di service).
-   - Buat *logic generater random string*/token. Gunakan *built-in module* bawaan Bun/Node seperti `crypto.randomUUID()`.
-   - Setelah password dipastikan valid (`bcrypt.compare` true), buat entri baru ke tabel `sessions` menggunakan query *insert* dari db. Masukkan `user_id` berdasarkan user yang ditemukan beserta string `token` tadi.
-   - Kembalikan kembalian JSON dengan membawa data `token` untuk HTTP handler.
-2. **Pembuatan Layanan Pengecekan Sesi (Opsional):**
-   - Buat *method* service seperti `async checkSession(token: string)` yang mengembalikan nilai boolean (true/false) dengan cara melakukan *select* pada tabel `sessions` berdasar filter token.
+### 2. Buat Route Endpoint (`src/routes/users-route.ts`)
+1. Buat file baru dengan nama `users-route.ts` di dalam folder `src/routes/` (jika belum ada).
+2. Lakukan import module `Elysia` dan import service `getCurrentUser` yang baru saja dibuat.
+3. Buat sebuah instance/group route baru dengan prefix `/api/users`.
+4. Buat handler untuk HTTP method `.get('/me', ...)`.
+5. **Terapkan Middleware Otentikasi**:
+   - Pastikan endpoint terlindungi oleh autentikasi. Ambil header `Authorization` / Cookie JWT dari request klien.
+   - Apabila tidak valid atau tidak ada token otentikasi, kembalikan langsung response HTTP dengan status `401 Unauthorized` dengan isi response body:
+     ```json
+     {
+         "message": "Unauthorized: No token provided"
+     }
+     ```
+6. **Eksekusi dan Return Data**:
+   - Apabila otentikasi berhasil, ambil id user dari payload token yang sudah terverifikasi.
+   - Panggil service `getCurrentUser(userId)` menggunakan ID tersebut untuk mengambil data lengkap dari database.
+   - Susun dan kembalikan response berhasil dengan bentuk JSON object sesuai spesifikasi ("message" dan "data").
 
-### Tahap 3: Perubahan *Routing API* (`src/routes/users-route.ts`)
-1. **Pembersihan Modul JWT:** 
-   - Hapus inisialisasi *plugin* `@elysiajs/jwt` dari deklarasi Elysia App dan juga hapus destrukturisasi instansi `{ jwt }` pada parameter request *endpoint* API.
-2. **Pembaruan Endpoint `POST /api/login`:**
-   - Tangani kembalian dari *service* login dan pastikan API mengembalikan Token Sesi kepada Klien tanpa perlu *menandatangani/sign* melalui JWT plugin lagi.
-3. **Pembaruan Middleware Endpoint `GET /api/users`:**
-   - Perbarui *hook proteksi* / `beforeHandle`.
-   - Ekstrak token mentah dari format `Bearer <TOKEN>` di dalam *request Headers* `Authorization`.
-   - Daripada menggunakan method `.verify()`, berikan token mentah ini pada *service pengecekan session* (atau lakukan query baca db secara langsung untuk memastikan bahwa di dalam tabel `sessions` benar-benar terdapat record baris dengan nilai string kolom token yang sama).
-   - Apabila token terverifikasi di database, jalankan fungsi ambil daftar Users. Apabila tidak ditemukan barisnya di DB (atau header kosong), kembalikan response gagal / error `401 Unauthorized`.
+### 3. Daftarkan Route pada Entry Point Utama (Contoh: `src/index.ts`)
+1. Buka file entry point utama dari aplikasi ElysiaJS (biasanya terletak di `src/index.ts` atau file setup utama).
+2. Import module hasil file route yang kita buat (`import userRoutes from './routes/users-route'`).
+3. Daftarkan route tersebut ke instance utama Elysia menggunakan method `.use(userRoutes)`.
 
-### Tahap 4: Testing (Pengujian)
-1. **DB Check:** Pastikan struktur tabel `sessions` telah di-*generate* utuh oleh spesifikasi Drizzle ORM.
-2. **Skenario Login:** Panggil POST `/api/login` melalui API Client (Postman/Curl). Periksa MySQL database Anda dan pastikan satu baris log akses sesi baru telah masuk di tabel `sessions` dan terikat pada *user_id* yang benar.
-3. **Skenario Pengenalan Token:**
-   - Lakukan GET request pada `/api/users` dengan header `Authorization: Bearer <SESSION_TOKEN_BARU_YANG_ADA_DI_DB>`. Pastikan data daftar users dapat dibaca.
-   - Ubah huruf *header* Bearer Token dengan sembarang teks dan pastikan Anda terblokir dengan akses error `401`.
+### 4. Pengujian (Testing)
+Lakukan testing manual pada endpoint tersebut (bisa dengan cURL, Postman, ataupun unit testing otomatis):
+1. **Skenario Gagal**: Lakukan request `GET /api/users/me` tanpa token atau token invalid. Pastikan server menolak request dengan status Code `401 Unauthorized` beserta message *"Unauthorized: No token provided"*.
+2. **Skenario Berhasil**: Lakukan request `GET /api/users/me` dengan mengirim token otentikasi valid pada HTTP Header. Pastikan server merespons dengan status code `200 OK` dan body object yang sesuai format lengkap (berisi *id, name, email, created_at*).

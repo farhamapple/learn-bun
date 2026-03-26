@@ -69,6 +69,15 @@ export const usersService = {
     const allUsers = await db.select().from(users);
 
     // 2. Remove passwords
-    return allUsers.map(({ password, ...user }) => user);
+    return allUsers.map(({ password: _, ...user }) => user);
+  },
+
+  async getUserById(userId: number) {
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) {
+      return null;
+    }
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   },
 };

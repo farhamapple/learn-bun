@@ -37,29 +37,33 @@ export const usersRoute = new Elysia({ prefix: "/api" })
       password: t.String(),
     })
   })
-  .guard({
-    beforeHandle: async ({ set, headers: { authorization } }) => {
-        if (!authorization) {
-            set.status = 401;
-            return { message: "Unauthorized: No token provided" };
-        }
-        const token = authorization.split(' ')[1];
-        if (!token) {
-            set.status = 401;
-            return { message: "Unauthorized: Invalid token format" };
-        }
-        const session = await usersService.checkSession(token);
-        if (!session) {
-            set.status = 401;
-            return { message: "Unauthorized: Invalid or expired session" };
-        }
-    }
-  }, (app) =>
-    app.get("/users", async () => {
-        const users = await usersService.getAllUsers();
-        return {
-          message: "Users fetched successfully",
-          data: users,
-        };
-    })
-  );
+  .derive(async ({ headers: { authorization } }) => {
+    if (!authorization) return { session: null };
+    const token = authorization.split(' ')[1];
+    if (!token) return { session: null };
+    
+    const session = await usersService.checkSession(token);
+    return { session };
+  })
+  .get("/users/me", async ({ session, set }) => {
+      if (!session) {
+          set.status = 401;
+          return { message: "Unauthorized: No token provided" };
+      }
+      const user = await usersService.getUserById(session.userId);
+      return {
+        message: "User fetched successfully",
+        data: user,
+      };
+  })
+  .get("/users", async ({ session, set }) => {
+      if (!session) {
+          set.status = 401;
+          return { message: "Unauthorized: No token provided" };
+      }
+      const users = await usersService.getAllUsers();
+      return {
+        message: "Users fetched successfully",
+        data: users,
+      };
+  });
