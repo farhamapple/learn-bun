@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { usersService } from "../services/users-service";
+import { UnauthorizedError } from "../errors";
 
 export const usersRoute = new Elysia({ prefix: "/api" })
   .post("/register", async ({ body, set }) => {
@@ -77,7 +78,11 @@ export const usersRoute = new Elysia({ prefix: "/api" })
       const message = await usersService.logoutUser(token);
       return { message };
     } catch (error: any) {
-      set.status = 401;
+      if (error instanceof UnauthorizedError) {
+        set.status = 401;
+      } else {
+        set.status = 500;
+      }
       return { message: error.message };
     }
   });
