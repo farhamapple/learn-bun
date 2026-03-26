@@ -1,7 +1,8 @@
 import { db } from "../db";
-import { users } from "../db/schema";
+import { users, sessions } from "../db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { randomUUID } from "node:crypto";
 
 export const usersService = {
   async registerUser({ name, email, password }: any) {
@@ -43,9 +44,24 @@ export const usersService = {
       throw new Error("Invalid email or password");
     }
 
-    // 3. Return user data (excluding password)
+    // 3. Create Session
+    const sessionToken = randomUUID();
+    await db.insert(sessions).values({
+      userId: user.id,
+      token: sessionToken,
+    });
+
+    // 4. Return user data (excluding password) + Session Token
     const { password: _, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    return {
+      ...userWithoutPassword,
+      token: sessionToken,
+    };
+  },
+
+  async checkSession(token: string) {
+    const [session] = await db.select().from(sessions).where(eq(sessions.token, token)).limit(1);
+    return session || null;
   },
 
   async getAllUsers() {

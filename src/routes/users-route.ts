@@ -1,14 +1,7 @@
 import { Elysia, t } from "elysia";
 import { usersService } from "../services/users-service";
-import { jwt } from "@elysiajs/jwt";
 
 export const usersRoute = new Elysia({ prefix: "/api" })
-  .use(
-    jwt({
-        name: 'jwt',
-        secret: process.env.JWT_SECRET || 'supersecret'
-    })
-  )
   .post("/register", async ({ body, set }) => {
     try {
       const user = await usersService.registerUser(body);
@@ -27,16 +20,12 @@ export const usersRoute = new Elysia({ prefix: "/api" })
       password: t.String(),
     })
   })
-  .post("/login", async ({ body, set, jwt }) => {
+  .post("/login", async ({ body, set }) => {
     try {
-      const user = await usersService.loginUser(body);
-      const token = await jwt.sign({ id: user.id });
+      const userWithToken = await usersService.loginUser(body);
       return {
         message: "User logged in successfully",
-        data: {
-          ...user,
-          token,
-        },
+        data: userWithToken,
       };
     } catch (error: any) {
       set.status = 401;
@@ -49,16 +38,20 @@ export const usersRoute = new Elysia({ prefix: "/api" })
     })
   })
   .guard({
-    beforeHandle: async ({ jwt, set, headers: { authorization } }) => {
+    beforeHandle: async ({ set, headers: { authorization } }) => {
         if (!authorization) {
             set.status = 401;
             return { message: "Unauthorized: No token provided" };
         }
         const token = authorization.split(' ')[1];
-        const payload = await jwt.verify(token);
-        if (!payload) {
+        if (!token) {
             set.status = 401;
-            return { message: "Unauthorized: Invalid token" };
+            return { message: "Unauthorized: Invalid token format" };
+        }
+        const session = await usersService.checkSession(token);
+        if (!session) {
+            set.status = 401;
+            return { message: "Unauthorized: Invalid or expired session" };
         }
     }
   }, (app) =>

@@ -1,0 +1,19 @@
+Buatkan Issue.md yang berisi perencanaan untuk nanti di implementasikan oleh junior programmer atau AI model yang lebih murah
+
+Isi dari Perencanaannyan adalah sebagai berikuit
+buat table sessions:
+id integer auto increment
+user_id integer not null 
+token varchar 255 not null
+created_at timestampe default current_timestamp
+
+Integrasikan table sessions ke dalam API yang sudah ada
+
+API yang sudah ada : 
+- POST /api/register
+- POST /api/login
+- GET /api/users
+
+API yang sudah ada menggunakan JWT untuk otentikasi
+
+API yang baru akan menggunakan Session untuk otentikasi
